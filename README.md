@@ -24,19 +24,19 @@ Modern municipalities suffer from reactive maintenance. Citizens report potholes
 
 ## ✨ Key Features
 
-* **Artificial Intelligence Triage**
+* **Artificial Intelligence Triage:**
   User uploads (including video formats, parsed via OpenCV) are analyzed by a custom Google Gemini pipeline. The system automatically categorizes the issue and assigns a 1-5 severity rating.
   
-* **Proximity Deduplication**
+* **Proximity Deduplication:**
   If a citizen reports an issue within 300 meters of an active report, the system intelligently merges them, converting the new report into an "upvote" for the existing one.
   
-* **Community Gamification**
+* **Community Gamification:**
   A robust reputation system awards points for civic engagement. Citizens earn points by filing reports, verifying others' reports, and contributing to discussions.
   
-* **Administrative Command Center**
+* **Administrative Command Center:**
   A dedicated, high-contrast portal for city officials to filter issues by severity, track resolution metrics, and flag spam.
   
-* **Predictive Impact Analytics**
+* **Predictive Impact Analytics:**
   A localized intelligence dashboard that analyzes historical data to generate resource allocation recommendations and predict infrastructure failure hotspots.
 
 ---
@@ -45,16 +45,16 @@ Modern municipalities suffer from reactive maintenance. Citizens report potholes
 
 The architecture is divided into four highly decoupled layers:
 
-1. **Client Application Layer**
+1. **Client Application Layer:**
    The user-facing interface, built with HTML5, CSS3, and Vanilla JavaScript. It serves the Citizen Portal for data input, the Admin Command Center for moderation, and the Impact Analytics dashboard for data visualization.
 
-2. **Backend Services Layer**
+2. **Backend Services Layer:**
    A Python Flask server acts as the central router. It handles RESTful API requests, WebSocket connections for real-time updates, and processes media. OpenCV Headless is utilized to extract key frames from citizen video uploads before AI processing.
 
-3. **Intelligence Layer**
+3. **Intelligence Layer:**
    Google Generative AI (Gemini Flash) powers the core logic. When an issue is uploaded, the AI parses the visual and textual data to determine the specific category, assign a severity score, and generate a concise summary.
 
-4. **Persistence Layer**
+4. **Persistence Layer:**
    A relational SQLite database managed via SQLAlchemy. It maintains the state of all issue reports, tracks gamification points for citizen profiles, and logs all community upvotes and verification data.
 
 ---
@@ -96,5 +96,5 @@ Access the application locally at `http://127.0.0.1:5000/`.
 
 <div align="center">
   <b>The Future of Urban Maintenance</b><br>
-  <i>Jan Sahayak does not just repair the city; it understands it.</i>
+  <i>Jan Sahayak does not just repair the city, it understands it.</i>
 </div>
