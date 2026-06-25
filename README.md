@@ -16,44 +16,19 @@ Key Features
 
 System Architecture
 
-```mermaid
-flowchart TD
-    subgraph Client Application
-        A[Citizen Portal]
-        B[Admin Command Center]
-        C[Impact Analytics]
-    end
+The architecture is divided into four main layers:
 
-    subgraph Backend Services
-        D[Flask API Router]
-        E[OpenCV Frame Extractor]
-        F[Spatial Deduplication Engine]
-    end
+Client Application Layer
+The user-facing interface, built with HTML5, CSS3, and Vanilla JavaScript. It serves the Citizen Portal for data input, the Admin Command Center for moderation, and the Impact Analytics dashboard for data visualization.
 
-    subgraph Intelligence Layer
-        G[Google Gemini AI]
-    end
+Backend Services Layer
+A Python Flask server acts as the central router. It handles RESTful API requests, WebSocket connections for real-time updates, and processes media. OpenCV Headless is utilized to extract key frames from citizen video uploads before AI processing.
 
-    subgraph Persistence Layer
-        H[(Relational Database)]
-    end
+Intelligence Layer
+Google Generative AI (Gemini Flash) powers the core logic. When an issue is uploaded, the AI parses the visual and textual data to determine the specific category, assign a severity score, and generate a concise summary. It also analyzes aggregated historical data to predict geographic hotspots.
 
-    A -- "Submit Issue (Image/Video)" --> D
-    A -- "Geospatial Data" --> F
-    D -- "Video Uploads" --> E
-    E -- "Extracted Frames" --> G
-    D -- "Standard Uploads" --> G
-    
-    G -- "Severity & Category" --> D
-    F -- "Proximity Check" --> D
-    D -- "Persist State" --> H
-    
-    H -- "Aggregated Data" --> C
-    C -- "Pattern Request" --> G
-    G -- "Predictive Insights" --> C
-    
-    H -- "Filtered Queues" --> B
-```
+Persistence Layer
+A relational SQLite database managed via SQLAlchemy. It maintains the state of all issue reports, tracks gamification points for citizen profiles, and logs all community upvotes and verification data.
 
 Technology Stack
 Frontend: HTML5, CSS3, Vanilla JavaScript, Chart.js, GSAP
