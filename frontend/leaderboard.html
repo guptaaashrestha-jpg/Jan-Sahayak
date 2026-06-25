@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jan Sahayak • Community Heroes</title>
+    <meta name="description" content="Community leaderboard and gamification hub. Earn points by reporting and verifying civic issues.">
+
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/pill-nav.css">
+    <link rel="stylesheet" href="/css/dot-grid.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <style>
+        .leaderboard-table { width: 100%; border-collapse: separate; border-spacing: 0 0.375rem; }
+        .leaderboard-table th {
+            font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+            color: var(--text-dim); padding: 0.5rem 1rem; text-align: left;
+        }
+        .leaderboard-table td {
+            padding: 0.875rem 1rem; font-size: 0.8rem; color: var(--text-secondary);
+            background: var(--bg-card); transition: all 0.25s ease;
+        }
+        .leaderboard-table tr td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+        .leaderboard-table tr td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+        .leaderboard-table tbody tr:hover td { background: var(--bg-card-hover); }
+
+        .rank-1 td { border: 1px solid rgba(245, 158, 11, 0.2) !important; }
+        .rank-2 td { border: 1px solid rgba(148, 163, 184, 0.15) !important; }
+        .rank-3 td { border: 1px solid rgba(180, 130, 80, 0.15) !important; }
+
+        .badge-card {
+            background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+            padding: 1.25rem; text-align: center; transition: all 0.3s ease;
+        }
+        .badge-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--border-medium); }
+
+        @keyframes float-badge {
+            0% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-5px) scale(1.1); }
+            100% { transform: translateY(0px) scale(1); }
+        }
+        
+        .badge-icon-emoji {
+            display: inline-block;
+            animation: float-badge 3s ease-in-out infinite;
+            transform-origin: bottom center;
+        }
+        
+        .badge-card:hover .badge-icon-emoji {
+            animation-duration: 1s;
+        }
+
+        .profile-lookup { max-width: 400px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+    <div id="dot-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></div>
+    <div id="main-nav"></div>
+
+    <div class="page-wrapper" style="position:relative;z-index:1;">
+        <div class="container" style="padding-top:1rem;padding-bottom:3rem;">
+
+            <!-- Header -->
+            <div class="section-header" style="text-align:center;margin-bottom:2rem;">
+                <h1 id="page-title" class="text-3xl font-bold tracking-widest" style="letter-spacing:0.15em;">COMMUNITY HEROES</h1>
+                <p class="section-subtitle" style="margin-top:0.375rem;">Gamification &amp; Civic Reputation</p>
+            </div>
+
+            <!-- Badge System -->
+            <div class="grid-4" style="margin-bottom:2rem;">
+                <div class="badge-card fade-in-item" style="animation-delay: 0.1s;">
+                    <div class="badge-icon-emoji" style="font-size:2.5rem;margin-bottom:0.5rem;animation-delay: 0.0s;">🥉</div>
+                    <div class="font-bold text-sm" style="color:var(--accent-amber);">Civic Starter</div>
+                    <div class="font-mono text-xs" style="color:var(--text-dim);margin-top:0.25rem;">1+ report</div>
+                </div>
+                <div class="badge-card fade-in-item" style="animation-delay: 0.2s;">
+                    <div class="badge-icon-emoji" style="font-size:2.5rem;margin-bottom:0.5rem;animation-delay: 0.2s;">🥈</div>
+                    <div class="font-bold text-sm" style="color:#94a3b8;">Guardian</div>
+                    <div class="font-mono text-xs" style="color:var(--text-dim);margin-top:0.25rem;">5 reports + 10 verifies</div>
+                </div>
+                <div class="badge-card fade-in-item" style="animation-delay: 0.3s;">
+                    <div class="badge-icon-emoji" style="font-size:2.5rem;margin-bottom:0.5rem;animation-delay: 0.4s;">🥇</div>
+                    <div class="font-bold text-sm" style="color:var(--accent-amber);">Hero</div>
+                    <div class="font-mono text-xs" style="color:var(--text-dim);margin-top:0.25rem;">15 reports + 30 verifies</div>
+                </div>
+                <div class="badge-card fade-in-item" style="animation-delay: 0.4s;">
+                    <div class="badge-icon-emoji" style="font-size:2.5rem;margin-bottom:0.5rem;animation-delay: 0.6s;">💎</div>
+                    <div class="font-bold text-sm" style="color:var(--accent-cyan);">Legend</div>
+                    <div class="font-mono text-xs" style="color:var(--text-dim);margin-top:0.25rem;">50 reports + 100 verifies</div>
+                </div>
+            </div>
+
+            <!-- Points Breakdown -->
+            <div class="glass-card-static" style="padding:1.25rem 1.5rem;margin-bottom:2rem;">
+                <div class="kpi-label" style="margin-bottom:0.75rem;">Points System</div>
+                <div class="flex gap-6" style="flex-wrap:wrap;">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold" style="color:var(--accent-emerald);font-size:0.8rem;">+10</span>
+                        <span class="text-xs" style="color:var(--text-dim);">File a report</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold" style="color:var(--accent-emerald);font-size:0.8rem;">+5</span>
+                        <span class="text-xs" style="color:var(--text-dim);">Report resolved</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold" style="color:var(--accent-emerald);font-size:0.8rem;">+3</span>
+                        <span class="text-xs" style="color:var(--text-dim);">Verify (vote)</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold" style="color:var(--accent-emerald);font-size:0.8rem;">+2</span>
+                        <span class="text-xs" style="color:var(--text-dim);">Comment</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Table -->
+            <div class="glass-card-static" style="padding:1.5rem;margin-bottom:2rem;">
+                <div class="kpi-label" style="margin-bottom:1rem;">Top Community Members</div>
+                <div style="overflow-x:auto;">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">Rank</th>
+                                <th>Name</th>
+                                <th>Badge</th>
+                                <th style="text-align:right;">Points</th>
+                                <th style="text-align:right;">Reports</th>
+                                <th style="text-align:right;">Verifications</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="leaderboard-empty" class="empty-state" style="display:none;">
+                    <div class="empty-state-icon">🏆</div>
+                    <div class="empty-state-text">No community members yet. Be the first to file a report!</div>
+                </div>
+            </div>
+
+            <!-- Profile Lookup -->
+            <div class="glass-card-static" style="padding:1.5rem;">
+                <div class="kpi-label" style="margin-bottom:1rem;">Look Up Your Profile</div>
+                <div class="profile-lookup">
+                    <div class="flex gap-2">
+                        <input type="text" id="lookup-name" class="form-input" placeholder="Enter your name..." style="font-size:0.8rem;">
+                        <button id="btn-lookup" class="btn btn-outline btn-sm">SEARCH</button>
+                    </div>
+                    <div id="profile-result" style="margin-top:1rem;display:none;">
+                        <div class="glass-card-static" style="padding:1.25rem;text-align:center;">
+                            <div id="profile-badge-icon" style="font-size:2rem;margin-bottom:0.5rem;"></div>
+                            <div id="profile-name" class="font-bold text-lg" style="color:var(--text-primary);"></div>
+                            <div id="profile-badge-text" class="font-mono text-xs" style="color:var(--accent-emerald);margin-bottom:1rem;"></div>
+                            <div class="grid-4" style="gap:0.5rem;">
+                                <div>
+                                    <div class="font-mono font-bold text-lg" id="profile-points" style="color:var(--accent-emerald);">0</div>
+                                    <div class="text-xs" style="color:var(--text-dim);">Points</div>
+                                </div>
+                                <div>
+                                    <div class="font-mono font-bold text-lg" id="profile-reports">0</div>
+                                    <div class="text-xs" style="color:var(--text-dim);">Reports</div>
+                                </div>
+                                <div>
+                                    <div class="font-mono font-bold text-lg" id="profile-verifications">0</div>
+                                    <div class="text-xs" style="color:var(--text-dim);">Verifications</div>
+                                </div>
+                                <div>
+                                    <div class="font-mono font-bold text-lg" id="profile-comments">0</div>
+                                    <div class="text-xs" style="color:var(--text-dim);">Comments</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="profile-error" style="margin-top:0.5rem;display:none;" class="font-mono text-xs" style="color:var(--accent-rose);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/decrypted-text.js"></script>
+    <script src="/js/click-spark.js"></script>
+    <script src="/js/pill-nav.js"></script>
+    <script src="/js/dot-grid.js"></script>
+
+    <script>
+        new ClickSpark(document.body, { sparkColor: '#f59e0b', sparkSize: 10, sparkRadius: 15, sparkCount: 8, duration: 400 });
+        new DotGrid(document.getElementById('dot-bg'), { dotSize: 2, gap: 28, baseColor: '#1a2332', activeColor: '#f59e0b', proximity: 80, shockRadius: 150, shockStrength: 3 });
+        new PillNav(document.getElementById('main-nav'), {
+            items: [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Analytics', href: '/analytics' },
+                { label: 'Leaderboard', href: '/leaderboard' },
+                { label: 'Admin', href: '/admin' }
+            ],
+            activeHref: '/leaderboard', logoText: 'JS', baseColor: '#111827', pillColor: '#1e293b', hoveredPillTextColor: '#111827', pillTextColor: '#94a3b8'
+        });
+        new DecryptedText(document.getElementById('page-title'), { text: 'COMMUNITY HEROES', speed: 50, maxIterations: 12, animateOn: 'view', className: 'decrypted-char', encryptedClassName: 'encrypted-char' });
+
+        function getBadgeIcon(badge) {
+            return { 'Legend': '💎', 'Hero': '🥇', 'Guardian': '🥈', 'Starter': '🥉', 'New': '🌱' }[badge] || '🌱';
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch('/api/leaderboard');
+                const data = await res.json();
+                const tbody = document.getElementById('leaderboard-body');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    document.getElementById('leaderboard-empty').style.display = 'block';
+                    return;
+                }
+
+                data.forEach((c, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = `fade-in-item rank-${c.rank}`;
+                    tr.style.animationDelay = `${idx * 0.06}s`;
+
+                    let rankDisplay = c.rank;
+                    if (c.rank === 1) rankDisplay = '👑';
+                    else if (c.rank === 2) rankDisplay = '🥈';
+                    else if (c.rank === 3) rankDisplay = '🥉';
+
+                    tr.innerHTML = `
+                        <td class="font-mono font-bold text-lg" style="text-align:center;${c.rank <= 3 ? 'color:var(--accent-amber);' : ''}">${rankDisplay}</td>
+                        <td class="font-bold" style="color:var(--text-primary);">${c.name}</td>
+                        <td>
+                            <span class="flex items-center gap-1">
+                                <span class="badge-icon">${getBadgeIcon(c.badge)}</span>
+                                <span class="font-mono text-xs" style="color:var(--accent-emerald);">${c.badge}</span>
+                            </span>
+                        </td>
+                        <td class="font-mono font-bold" style="text-align:right;color:var(--accent-emerald);">${c.points}</td>
+                        <td class="font-mono" style="text-align:right;">${c.reports_filed}</td>
+                        <td class="font-mono" style="text-align:right;">${c.verifications_made}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('btn-lookup').addEventListener('click', lookupProfile);
+        document.getElementById('lookup-name').addEventListener('keypress', e => { if (e.key === 'Enter') lookupProfile(); });
+
+        async function lookupProfile() {
+            const name = document.getElementById('lookup-name').value.trim();
+            if (!name) return;
+
+            try {
+                const res = await fetch(`/api/citizen/${encodeURIComponent(name)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('profile-badge-icon').textContent = getBadgeIcon(data.badge);
+                    document.getElementById('profile-name').textContent = data.name;
+                    document.getElementById('profile-badge-text').textContent = data.badge.toUpperCase();
+                    document.getElementById('profile-points').textContent = data.points;
+                    document.getElementById('profile-reports').textContent = data.reports_filed;
+                    document.getElementById('profile-verifications').textContent = data.verifications_made;
+                    document.getElementById('profile-comments').textContent = data.comments_made;
+                    document.getElementById('profile-result').style.display = 'block';
+                    document.getElementById('profile-error').style.display = 'none';
+                } else {
+                    document.getElementById('profile-result').style.display = 'none';
+                    const errEl = document.getElementById('profile-error');
+                    errEl.textContent = 'Citizen not found. File a report to create your profile!';
+                    errEl.style.display = 'block';
+                    errEl.style.color = 'var(--accent-rose)';
+                }
+            } catch {
+                document.getElementById('profile-error').textContent = 'Network error.';
+                document.getElementById('profile-error').style.display = 'block';
+            }
+        }
+
+        // Auto-fill lookup with saved name
+        const savedName = localStorage.getItem('janSahayakUser');
+        if (savedName) {
+            document.getElementById('lookup-name').value = savedName;
+        }
+
+        window.addEventListener('DOMContentLoaded', loadLeaderboard);
+    </script>
+</body>
+</html>

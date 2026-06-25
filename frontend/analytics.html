@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jan Sahayak • Impact Analytics</title>
+    <meta name="description" content="Data-driven civic impact analytics with AI-powered predictive insights for better resource allocation.">
+
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/pill-nav.css">
+    <link rel="stylesheet" href="/css/dot-grid.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <div id="dot-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></div>
+    <div id="main-nav"></div>
+
+    <div class="page-wrapper" style="position:relative;z-index:1;">
+        <div class="container" style="padding-top:1rem;padding-bottom:3rem;">
+
+            <!-- Header -->
+            <div class="section-header" style="text-align:center;margin-bottom:2rem;">
+                <h1 id="page-title" class="text-3xl font-bold tracking-widest" style="letter-spacing:0.15em;">IMPACT ANALYTICS</h1>
+                <p class="section-subtitle" style="margin-top:0.375rem;">AI-Powered Civic Intelligence Dashboard</p>
+            </div>
+
+            <!-- KPIs -->
+            <div class="grid-4" style="margin-bottom:2rem;">
+                <div class="kpi-card" style="--kpi-accent:var(--accent-cyan);">
+                    <div class="kpi-label">Total Reports</div>
+                    <div class="kpi-value" id="kpi-total" style="color:var(--accent-cyan);">0</div>
+                </div>
+                <div class="kpi-card" style="--kpi-accent:var(--accent-emerald);">
+                    <div class="kpi-label">Resolution Rate</div>
+                    <div class="kpi-value" id="kpi-rate" style="color:var(--accent-emerald);">0<span class="font-mono text-sm">%</span></div>
+                </div>
+                <div class="kpi-card" style="--kpi-accent:var(--accent-amber);">
+                    <div class="kpi-label">Avg Response</div>
+                    <div class="kpi-value" id="kpi-response" style="color:var(--accent-amber);">0<span class="font-mono text-sm">h</span></div>
+                </div>
+                <div class="kpi-card" style="--kpi-accent:var(--accent-indigo);">
+                    <div class="kpi-label">Active Citizens</div>
+                    <div class="kpi-value" id="kpi-citizens" style="color:var(--accent-indigo);">0</div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid-2" style="margin-bottom:1.5rem;">
+                <div class="chart-container">
+                    <div class="kpi-label" style="margin-bottom:1rem; color:var(--text-primary); font-size:0.75rem; border-left:3px solid var(--accent-rose); padding-left:0.5rem;">Issue Distribution by Category</div>
+                    <canvas id="chart-doughnut"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="kpi-label" style="margin-bottom:1rem; color:var(--text-primary); font-size:0.75rem; border-left:3px solid var(--accent-cyan); padding-left:0.5rem;">Reports Over Time</div>
+                    <canvas id="chart-line"></canvas>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid-2" style="margin-bottom:2rem;">
+                <div class="chart-container">
+                    <div class="kpi-label" style="margin-bottom:1rem; color:var(--text-primary); font-size:0.75rem; border-left:3px solid var(--accent-emerald); padding-left:0.5rem;">Resolved vs Pending by Category</div>
+                    <canvas id="chart-bar"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="kpi-label" style="margin-bottom:1rem; color:var(--text-primary); font-size:0.75rem; border-left:3px solid var(--accent-amber); padding-left:0.5rem;">Top Issues by Community Upvotes</div>
+                    <canvas id="chart-horizontal"></canvas>
+                </div>
+            </div>
+
+            <!-- AI Predictions -->
+            <div class="glass-card-static" style="padding:2rem;">
+                <div class="flex items-center gap-3" style="margin-bottom:1.5rem;">
+                    <span style="font-size:1.5rem;">🧠</span>
+                    <div>
+                        <h2 class="text-lg font-bold tracking-wide">PREDICTIVE INSIGHTS</h2>
+                        <p class="section-subtitle" style="margin-top:2px;">AI-Generated Urban Analysis</p>
+                    </div>
+                </div>
+                <div id="predictions-loading" style="text-align:center;padding:1rem;">
+                    <div class="font-mono" style="font-size:0.75rem;color:var(--text-dim);">⟳ Generating AI predictions...</div>
+                </div>
+                <div id="predictions-content" class="grid-3" style="gap:1.5rem;display:none;">
+                    <div style="background:var(--accent-rose-glow); border:1px solid rgba(244,63,94,0.3); border-radius:var(--radius-md); padding:1.25rem;">
+                        <div class="kpi-label" style="color:var(--accent-rose);margin-bottom:0.5rem;">🔥 Hotspot Zones</div>
+                        <p id="pred-hotspots" style="font-size:0.8rem;color:var(--text-primary);line-height:1.6;"></p>
+                    </div>
+                    <div style="background:var(--accent-amber-glow); border:1px solid rgba(245,158,11,0.3); border-radius:var(--radius-md); padding:1.25rem;">
+                        <div class="kpi-label" style="color:var(--accent-amber);margin-bottom:0.5rem;">🔄 Recurring Patterns</div>
+                        <p id="pred-patterns" style="font-size:0.8rem;color:var(--text-primary);line-height:1.6;"></p>
+                    </div>
+                    <div style="background:var(--accent-emerald-glow); border:1px solid rgba(16,185,129,0.3); border-radius:var(--radius-md); padding:1.25rem;">
+                        <div class="kpi-label" style="color:var(--accent-emerald);margin-bottom:0.5rem;">📋 Recommendations</div>
+                        <p id="pred-recs" style="font-size:0.8rem;color:var(--text-primary);line-height:1.6;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/decrypted-text.js"></script>
+    <script src="/js/click-spark.js"></script>
+    <script src="/js/pill-nav.js"></script>
+    <script src="/js/dot-grid.js"></script>
+
+    <script>
+        new ClickSpark(document.body, { sparkColor: '#06b6d4', sparkSize: 10, sparkRadius: 15, sparkCount: 8, duration: 400 });
+        new DotGrid(document.getElementById('dot-bg'), { dotSize: 2, gap: 28, baseColor: '#1a2332', activeColor: '#06b6d4', proximity: 80, shockRadius: 150, shockStrength: 3 });
+        new PillNav(document.getElementById('main-nav'), {
+            items: [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Analytics', href: '/analytics' },
+                { label: 'Leaderboard', href: '/leaderboard' },
+                { label: 'Admin', href: '/admin' }
+            ],
+            activeHref: '/analytics', logoText: 'JS', baseColor: '#111827', pillColor: '#1e293b', hoveredPillTextColor: '#111827', pillTextColor: '#94a3b8'
+        });
+        new DecryptedText(document.getElementById('page-title'), { text: 'IMPACT ANALYTICS', speed: 50, maxIterations: 12, animateOn: 'view', className: 'decrypted-char', encryptedClassName: 'encrypted-char' });
+
+        function countUp(el, target, suffix = '', dur = 800) {
+            let s = 0; const step = target / (dur / 16);
+            const up = () => { s += step; if (s >= target) { el.innerHTML = target + suffix; return; } el.innerHTML = Math.floor(s) + suffix; requestAnimationFrame(up); };
+            requestAnimationFrame(up);
+        }
+
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const chartColors = ['#f43f5e', '#f59e0b', '#6366f1', '#06b6d4', '#10b981'];
+
+        async function loadAnalytics() {
+            try {
+                const res = await fetch('/api/analytics');
+                const data = await res.json();
+
+                countUp(document.getElementById('kpi-total'), data.total_reports);
+                countUp(document.getElementById('kpi-rate'), data.resolution_rate, '<span class="font-mono text-sm">%</span>');
+                countUp(document.getElementById('kpi-response'), data.avg_resolution_hours, '<span class="font-mono text-sm">h</span>');
+                countUp(document.getElementById('kpi-citizens'), data.active_citizens);
+
+                // Doughnut
+                const catLabels = Object.keys(data.category_breakdown).map(c => c.split(' ')[0]);
+                new Chart(document.getElementById('chart-doughnut'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: catLabels,
+                        datasets: [{ data: Object.values(data.category_breakdown), backgroundColor: chartColors, borderWidth: 0, hoverOffset: 6 }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }, 
+                        cutout: '65%',
+                        animation: {
+                            animateScale: true,
+                            animateRotate: true,
+                            duration: 2000,
+                            easing: 'easeOutElastic'
+                        }
+                    }
+                });
+
+                // Line
+                const dailyLabels = Object.keys(data.daily_trend).map(d => d.slice(5));
+                new Chart(document.getElementById('chart-line'), {
+                    type: 'line',
+                    data: {
+                        labels: dailyLabels,
+                        datasets: [{
+                            label: 'Reports', data: Object.values(data.daily_trend),
+                            borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)',
+                            fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#06b6d4'
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                });
+
+                // Bar
+                const allCats = [...new Set([...Object.keys(data.resolved_by_category), ...Object.keys(data.pending_by_category)])];
+                const barLabels = allCats.map(c => c.split(' ')[0]);
+                new Chart(document.getElementById('chart-bar'), {
+                    type: 'bar',
+                    data: {
+                        labels: barLabels,
+                        datasets: [
+                            { label: 'Resolved', data: allCats.map(c => data.resolved_by_category[c] || 0), backgroundColor: '#10b981', borderRadius: 4, maxBarThickness: 32 },
+                            { label: 'Pending', data: allCats.map(c => data.pending_by_category[c] || 0), backgroundColor: '#f59e0b', borderRadius: 4, maxBarThickness: 32 }
+                        ]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                });
+
+                // Horizontal bar
+                const topIssues = data.top_issues || [];
+                new Chart(document.getElementById('chart-horizontal'), {
+                    type: 'bar',
+                    data: {
+                        labels: topIssues.map(i => i.description.slice(0, 30) + (i.description.length > 30 ? '...' : '')),
+                        datasets: [{ label: 'Upvotes', data: topIssues.map(i => i.upvotes), backgroundColor: '#10b981', borderRadius: 4, maxBarThickness: 20 }]
+                    },
+                    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                });
+
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadPredictions() {
+            try {
+                const res = await fetch('/api/analytics/predictions');
+                const data = await res.json();
+                document.getElementById('pred-hotspots').textContent = data.hotspots || 'No data available.';
+                document.getElementById('pred-patterns').textContent = data.patterns || 'No data available.';
+                document.getElementById('pred-recs').textContent = data.recommendations || 'No data available.';
+                document.getElementById('predictions-loading').style.display = 'none';
+                document.getElementById('predictions-content').style.display = 'grid';
+            } catch {
+                document.getElementById('predictions-loading').innerHTML = '<span style="color:var(--accent-rose);font-family:var(--font-mono);font-size:0.75rem;">Failed to load predictions.</span>';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAnalytics();
+            loadPredictions();
+        });
+    </script>
+</body>
+</html>

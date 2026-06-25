@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jan Sahayak • Admin Command Center</title>
+    <meta name="description" content="Administrative panel for managing civic issue reports, resolving incidents, and moderating the community.">
+
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/pill-nav.css">
+    <link rel="stylesheet" href="/css/dot-grid.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+    <div id="dot-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></div>
+    <div id="main-nav"></div>
+
+    <div class="page-wrapper" style="position:relative;z-index:1;">
+        <div class="split-layout">
+
+            <!-- Sidebar -->
+            <aside class="split-sidebar" style="width:520px;">
+                <div class="sidebar-header">
+                    <h1 id="page-title" class="text-xl font-bold tracking-wide" style="letter-spacing:0.1em;color:var(--accent-rose);">COMMAND CENTER</h1>
+                    <p class="section-subtitle">Administrative Workflow</p>
+                </div>
+
+                <!-- Metrics -->
+                <div class="sidebar-metrics">
+                    <div class="grid-4" style="gap:0.5rem;">
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-amber);padding:0.75rem;">
+                            <div class="kpi-label" style="font-size:0.55rem;">Pending</div>
+                            <div class="kpi-value" id="m-pending" style="font-size:1.25rem;color:var(--accent-amber);">0</div>
+                        </div>
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-emerald);padding:0.75rem;">
+                            <div class="kpi-label" style="font-size:0.55rem;">Resolved</div>
+                            <div class="kpi-value" id="m-resolved" style="font-size:1.25rem;color:var(--accent-emerald);">0</div>
+                        </div>
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-rose);padding:0.75rem;">
+                            <div class="kpi-label" style="font-size:0.55rem;">Spam</div>
+                            <div class="kpi-value" id="m-spam" style="font-size:1.25rem;color:var(--accent-rose);">0</div>
+                        </div>
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-cyan);padding:0.75rem;">
+                            <div class="kpi-label" style="font-size:0.55rem;">Total</div>
+                            <div class="kpi-value" id="m-total" style="font-size:1.25rem;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div style="padding:0.75rem 1.5rem;border-bottom:1px solid var(--border-subtle);display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <select id="filter-status" class="form-input" style="width:auto;padding:0.375rem 0.75rem;font-size:0.7rem;">
+                        <option value="all">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="spam">Spam</option>
+                    </select>
+                    <select id="filter-category" class="form-input" style="width:auto;padding:0.375rem 0.75rem;font-size:0.7rem;">
+                        <option value="all">All Categories</option>
+                        <option value="Pothole">Pothole & Road</option>
+                        <option value="Garbage">Garbage & Waste</option>
+                        <option value="Streetlight">Streetlight</option>
+                        <option value="General">General</option>
+                    </select>
+                    <select id="sort-by" class="form-input" style="width:auto;padding:0.375rem 0.75rem;font-size:0.7rem;">
+                        <option value="newest">Newest First</option>
+                        <option value="severity">Severity ↓</option>
+                        <option value="upvotes">Most Upvotes</option>
+                    </select>
+                </div>
+
+                <!-- Issue List -->
+                <div class="sidebar-content" id="admin-list"></div>
+            </aside>
+
+            <!-- Map -->
+            <div class="split-map" id="map"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toast-icon">✓</span>
+        <span class="toast-message" id="toast-msg"></span>
+    </div>
+
+    <script src="/js/decrypted-text.js"></script>
+    <script src="/js/click-spark.js"></script>
+    <script src="/js/pill-nav.js"></script>
+    <script src="/js/dot-grid.js"></script>
+
+    <script>
+        new ClickSpark(document.body, { sparkColor: '#f43f5e', sparkSize: 10, sparkRadius: 15, sparkCount: 8, duration: 400 });
+        new DotGrid(document.getElementById('dot-bg'), { dotSize: 2, gap: 28, baseColor: '#1a2332', activeColor: '#f43f5e', proximity: 80, shockRadius: 150, shockStrength: 3 });
+        new PillNav(document.getElementById('main-nav'), {
+            items: [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Analytics', href: '/analytics' },
+                { label: 'Leaderboard', href: '/leaderboard' },
+                { label: 'Admin', href: '/admin' }
+            ],
+            activeHref: '/admin', logoText: 'JS', baseColor: '#111827', pillColor: '#1e293b', hoveredPillTextColor: '#111827', pillTextColor: '#94a3b8'
+        });
+        new DecryptedText(document.getElementById('page-title'), { text: 'COMMAND CENTER', speed: 50, maxIterations: 12, animateOn: 'view', className: 'decrypted-char', encryptedClassName: 'encrypted-char' });
+
+        let activeMarkers = [];
+        const socket = io(window.location.origin);
+        socket.on('database_updated', () => fetchAdmin());
+
+        const map = L.map('map', { zoomControl: false }).setView([26.8968, 80.9581], 13);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap & Carto' }).addTo(map);
+
+        function showToast(msg, isErr = false) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = isErr ? '✗' : '✓';
+            t.style.borderColor = isErr ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+            document.getElementById('toast-icon').style.color = isErr ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+            t.className = 'toast show' + (isErr ? ' error' : '');
+            setTimeout(() => t.classList.remove('show'), 3500);
+        }
+
+        function countUp(el, target, dur = 600) {
+            let s = 0; const step = target / (dur / 16);
+            const up = () => { s += step; if (s >= target) { el.textContent = target; return; } el.textContent = Math.floor(s); requestAnimationFrame(up); };
+            requestAnimationFrame(up);
+        }
+
+        function getSevColor(sev) {
+            return { 1: '#06b6d4', 2: '#10b981', 3: '#f59e0b', 4: '#ef4444', 5: '#f43f5e' }[sev] || '#f59e0b';
+        }
+
+        async function adminAction(url, method = 'POST') {
+            try {
+                await fetch(url, { method });
+                showToast('Action completed.');
+            } catch { showToast('Action failed.', true); }
+        }
+
+        document.getElementById('filter-status').addEventListener('change', fetchAdmin);
+        document.getElementById('filter-category').addEventListener('change', fetchAdmin);
+        document.getElementById('sort-by').addEventListener('change', fetchAdmin);
+
+        async function fetchAdmin() {
+            try {
+                const res = await fetch('/api/reports');
+                let reports = await res.json();
+
+                const statusFilter = document.getElementById('filter-status').value;
+                const catFilter = document.getElementById('filter-category').value;
+                const sortBy = document.getElementById('sort-by').value;
+
+                // Filter
+                if (statusFilter === 'spam') reports = reports.filter(r => r.flagged_spam);
+                else if (statusFilter !== 'all') reports = reports.filter(r => r.status === statusFilter && !r.flagged_spam);
+
+                if (catFilter !== 'all') reports = reports.filter(r => (r.category || '').includes(catFilter));
+
+                // Sort
+                if (sortBy === 'severity') reports.sort((a, b) => (b.ai_severity || 0) - (a.ai_severity || 0));
+                else if (sortBy === 'upvotes') reports.sort((a, b) => b.upvotes - a.upvotes);
+
+                // Counts
+                const allRes = await fetch('/api/reports');
+                const allReports = await allRes.json();
+                countUp(document.getElementById('m-pending'), allReports.filter(r => r.status === 'Pending' && !r.flagged_spam).length);
+                countUp(document.getElementById('m-resolved'), allReports.filter(r => r.status === 'Resolved').length);
+                countUp(document.getElementById('m-spam'), allReports.filter(r => r.flagged_spam).length);
+                countUp(document.getElementById('m-total'), allReports.length);
+
+                // Map
+                activeMarkers.forEach(m => map.removeLayer(m));
+                activeMarkers = [];
+
+                const container = document.getElementById('admin-list');
+                container.innerHTML = '';
+
+                if (reports.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No reports match filters.</div></div>';
+                    return;
+                }
+
+                reports.forEach((issue, idx) => {
+                    const statusColor = issue.flagged_spam ? '#f43f5e' : (issue.status === 'Resolved' ? '#10b981' : '#f59e0b');
+                    const sevColor = getSevColor(issue.ai_severity);
+
+                    const marker = L.circleMarker([issue.latitude, issue.longitude], {
+                        radius: 8, fillColor: statusColor, color: '#fff', weight: 1, fillOpacity: 0.8
+                    }).addTo(map);
+                    activeMarkers.push(marker);
+                    marker.bindPopup(`<div style="font-family:var(--font-body);"><strong style="color:${statusColor};">${issue.category}</strong><br><span style="font-size:0.8rem;">ID: ${issue.id} • Upvotes: ${issue.upvotes}</span></div>`);
+
+                    let statusBadge = '';
+                    if (issue.flagged_spam) statusBadge = '<span class="badge badge-spam">SPAM</span>';
+                    else if (issue.status === 'Resolved') statusBadge = '<span class="badge badge-resolved">RESOLVED</span>';
+                    else statusBadge = '<span class="badge badge-pending">PENDING</span>';
+
+                    const card = document.createElement('div');
+                    card.className = 'issue-card fade-in-item';
+                    card.style.animationDelay = `${idx * 0.05}s`;
+                    card.style.setProperty('--card-accent', statusColor);
+                    if (issue.status === 'Resolved') card.style.opacity = '0.5';
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center" style="margin-bottom:0.5rem;">
+                            <span class="category-badge">${issue.category || 'General'}</span>
+                            <div class="flex items-center gap-2">
+                                ${statusBadge}
+                                <span class="badge-severity" style="background:${sevColor}20;color:${sevColor};font-size:0.6rem;">${issue.ai_severity}</span>
+                            </div>
+                        </div>
+                        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;line-height:1.4;">${issue.ai_summary || issue.description}</p>
+                        <div class="flex items-center" style="margin-bottom:0.75rem;gap:0.75rem;">
+                            <span class="font-mono" style="font-size:0.6rem;color:var(--accent-emerald);">▲ ${issue.upvotes}</span>
+                            <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">▼ ${issue.downvotes}</span>
+                            <span class="time-ago">${issue.time_ago}</span>
+                            <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">by ${issue.reporter_name}</span>
+                        </div>
+                        ${issue.image ? `<div style="margin-bottom:0.75rem;"><img src="/uploads/${issue.image}" style="max-height:80px;border-radius:var(--radius-sm);opacity:0.8;" onerror="this.style.display='none'"></div>` : ''}
+                        <div class="flex gap-2" style="border-top:1px solid var(--border-subtle);padding-top:0.75rem;">
+                            ${(issue.status === 'Pending' && !issue.flagged_spam) ? `
+                                <button class="btn btn-outline btn-sm" onclick="adminAction('/api/report/${issue.id}/resolve')">✓ Resolve</button>
+                                <button class="btn btn-danger btn-sm" onclick="adminAction('/api/report/${issue.id}/spam')">🚫 Spam</button>
+                            ` : ''}
+                            <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="adminAction('/api/report/${issue.id}/remove','DELETE')">🗑 Delete</button>
+                        </div>
+                    `;
+                    card.addEventListener('click', (e) => {
+                        if (e.target.tagName === 'BUTTON') return;
+                        map.setView([issue.latitude, issue.longitude], 16, { animate: true });
+                    });
+                    container.appendChild(card);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        window.addEventListener('DOMContentLoaded', fetchAdmin);
+    </script>
+</body>
+</html>

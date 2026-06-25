@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jan Sahayak • Citizen Portal</title>
+    <meta name="description" content="Report and track civic issues in your neighborhood. AI-powered community problem solving platform.">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/pill-nav.css">
+    <link rel="stylesheet" href="/css/dot-grid.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- External Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+    <!-- Background Dot Grid -->
+    <div id="dot-bg" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></div>
+
+    <!-- Navigation -->
+    <div id="main-nav"></div>
+
+    <!-- Page Content -->
+    <div class="page-wrapper" style="position:relative;z-index:1;">
+        <div class="split-layout">
+
+            <!-- Sidebar -->
+            <aside class="split-sidebar">
+                <!-- Header -->
+                <div class="sidebar-header">
+                    <div class="flex justify-between items-center" style="margin-bottom:1rem;">
+                        <div>
+                            <h1 id="page-title" class="text-xl font-bold tracking-wide" style="letter-spacing:0.1em;">JAN SAHAYAK</h1>
+                            <p class="section-subtitle" style="margin-top:2px;">Citizen Reporting Portal</p>
+                        </div>
+                    </div>
+                    <button id="btn-new-report" class="btn btn-outline" style="width:100%;">
+                        <span style="font-size:1.1rem;">+</span> FILE NEW REPORT
+                    </button>
+                </div>
+
+                <!-- Metrics -->
+                <div class="sidebar-metrics">
+                    <div class="grid-2" style="gap:0.75rem;">
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-cyan);">
+                            <div class="kpi-label">Active Issues</div>
+                            <div class="kpi-value" id="metric-active">0</div>
+                        </div>
+                        <div class="kpi-card" style="--kpi-accent:var(--accent-emerald);">
+                            <div class="kpi-label">Community Votes</div>
+                            <div class="kpi-value" id="metric-votes" style="color:var(--accent-emerald);">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Issue Feed -->
+                <div class="sidebar-content" id="issues-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📡</div>
+                        <div class="empty-state-text">No active reports. Be the first to file one.</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map -->
+            <div class="split-map" id="map"></div>
+        </div>
+    </div>
+
+    <!-- Report Form Modal -->
+    <div class="modal-overlay" id="formOverlay">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="flex justify-between items-center" style="margin-bottom:1.5rem;">
+                <div>
+                    <h2 class="text-lg font-bold tracking-wide">NEW REPORT</h2>
+                    <p class="section-subtitle">Submit a civic issue</p>
+                </div>
+                <button id="btn-close-form" class="btn btn-ghost btn-sm" style="border:none;font-size:1.25rem;padding:0.25rem;">✕</button>
+            </div>
+
+            <form id="reportForm" style="display:flex;flex-direction:column;gap:1rem;">
+                <!-- Reporter Name -->
+                <div>
+                    <label class="form-label">Your Name</label>
+                    <input type="text" id="reporterName" class="form-input" placeholder="Enter your name for leaderboard" value="">
+                </div>
+
+                <!-- Location -->
+                <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:1rem;">
+                    <div class="flex justify-between items-center" style="margin-bottom:0.75rem;">
+                        <div class="flex items-center gap-2">
+                            <span id="gps-indicator" style="width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);display:inline-block;animation:pulse-ring 1.5s infinite;"></span>
+                            <span class="form-label" style="margin:0;">Location</span>
+                        </div>
+                        <button type="button" id="btn-use-gps" class="btn btn-ghost btn-sm" style="font-size:0.6rem;padding:0.25rem 0.5rem;">USE GPS</button>
+                    </div>
+                    <div style="position:relative;">
+                        <input type="text" id="locationSearch" class="form-input" placeholder="Search location (e.g. Vikas Nagar)" style="padding-right:2.5rem;">
+                        <button type="button" id="btn-search-location" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:1rem;cursor:pointer;">🔍</button>
+                    </div>
+                    <div id="gps-status" class="font-mono" style="font-size:0.65rem;color:var(--text-dim);text-align:right;margin-top:0.375rem;">Awaiting input...</div>
+                </div>
+
+                <!-- Media Upload -->
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="mediaFile" accept="image/*,video/*" required>
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;">📷</div>
+                    <span id="file-label" class="font-mono" style="font-size:0.75rem;color:var(--text-dim);">Capture Image or Video</span>
+                    <div id="media-preview" style="margin-top:0.75rem;display:none;"></div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="form-label">Description</label>
+                    <textarea id="description" class="form-input form-textarea" placeholder="Describe the issue clearly..." required></textarea>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" id="btn-submit" class="btn btn-primary" style="width:100%;padding:0.875rem;">
+                    <span id="submit-text">SUBMIT REPORT</span>
+                    <span id="submit-spinner" style="display:none;">⟳ ANALYZING...</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toast-icon">✓</span>
+        <span class="toast-message" id="toast-msg"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/decrypted-text.js"></script>
+    <script src="/js/click-spark.js"></script>
+    <script src="/js/pill-nav.js"></script>
+    <script src="/js/dot-grid.js"></script>
+
+    <script>
+        // ---- Initialize Animations ----
+        new ClickSpark(document.body, { sparkColor: '#10b981', sparkSize: 10, sparkRadius: 15, sparkCount: 8, duration: 400 });
+
+        new DotGrid(document.getElementById('dot-bg'), {
+            dotSize: 2, gap: 28, baseColor: '#1a2332', activeColor: '#10b981',
+            proximity: 80, shockRadius: 150, shockStrength: 3
+        });
+
+        new PillNav(document.getElementById('main-nav'), {
+            items: [
+                { label: 'Dashboard', href: '/' },
+                { label: 'Analytics', href: '/analytics' },
+                { label: 'Leaderboard', href: '/leaderboard' },
+                { label: 'Admin', href: '/admin' }
+            ],
+            activeHref: '/',
+            logoText: 'JS',
+            baseColor: '#111827',
+            pillColor: '#1e293b',
+            hoveredPillTextColor: '#111827',
+            pillTextColor: '#94a3b8'
+        });
+
+        new DecryptedText(document.getElementById('page-title'), {
+            text: 'JAN SAHAYAK', speed: 50, maxIterations: 12, animateOn: 'view',
+            className: 'decrypted-char', encryptedClassName: 'encrypted-char'
+        });
+
+        // ---- State ----
+        let userLatitude = null, userLongitude = null, activeMarkers = [];
+        const currentUser = localStorage.getItem('janSahayakUser') || '';
+        if (currentUser) document.getElementById('reporterName').value = currentUser;
+
+        // ---- Socket.IO ----
+        const socket = io(window.location.origin);
+        socket.on('database_updated', () => fetchReports());
+
+        // ---- Map ----
+        const map = L.map('map', { zoomControl: false }).setView([26.8968, 80.9581], 13);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap & Carto'
+        }).addTo(map);
+
+        // ---- Helpers ----
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = message;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+            icon.innerText = isError ? '✗' : '✓';
+            toast.style.borderColor = isError ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+            icon.style.color = isError ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        function getCategoryClass(category) {
+            if (!category) return 'cat-general';
+            if (category.includes('Pothole')) return 'cat-pothole';
+            if (category.includes('Garbage')) return 'cat-garbage';
+            if (category.includes('Streetlight')) return 'cat-streetlight';
+            return 'cat-general';
+        }
+
+        function getCategoryColor(category) {
+            if (!category) return '#06b6d4';
+            if (category.includes('Pothole')) return '#f43f5e';
+            if (category.includes('Garbage')) return '#f59e0b';
+            if (category.includes('Streetlight')) return '#6366f1';
+            return '#06b6d4';
+        }
+
+        function getSeverityColor(sev) {
+            const colors = { 1: '#06b6d4', 2: '#10b981', 3: '#f59e0b', 4: '#ef4444', 5: '#f43f5e' };
+            return colors[sev] || '#f59e0b';
+        }
+
+        function countUp(el, target, duration = 800) {
+            let start = 0;
+            const step = target / (duration / 16);
+            const update = () => {
+                start += step;
+                if (start >= target) { el.textContent = target; return; }
+                el.textContent = Math.floor(start);
+                requestAnimationFrame(update);
+            };
+            requestAnimationFrame(update);
+        }
+
+        // ---- Modal ----
+        document.getElementById('btn-new-report').addEventListener('click', () => {
+            document.getElementById('formOverlay').classList.add('active');
+        });
+        document.getElementById('btn-close-form').addEventListener('click', () => {
+            document.getElementById('formOverlay').classList.remove('active');
+        });
+
+        // ---- Media Preview ----
+        document.getElementById('mediaFile').addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            document.getElementById('file-label').textContent = file.name;
+            document.getElementById('file-label').style.color = 'var(--accent-emerald)';
+
+            const preview = document.getElementById('media-preview');
+            preview.innerHTML = '';
+            preview.style.display = 'block';
+
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.cssText = 'max-height:120px;border-radius:var(--radius-sm);margin:0 auto;';
+                preview.appendChild(img);
+            } else if (file.type.startsWith('video/')) {
+                const vid = document.createElement('video');
+                vid.src = URL.createObjectURL(file);
+                vid.controls = true;
+                vid.style.cssText = 'max-height:120px;border-radius:var(--radius-sm);margin:0 auto;';
+                preview.appendChild(vid);
+            }
+        });
+
+        // ---- Location ----
+        document.getElementById('btn-use-gps').addEventListener('click', () => {
+            const status = document.getElementById('gps-status');
+            status.textContent = 'Acquiring GPS...';
+            status.style.color = 'var(--accent-cyan)';
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    userLatitude = pos.coords.latitude;
+                    userLongitude = pos.coords.longitude;
+                    status.textContent = `LOCKED: ${userLatitude.toFixed(4)}°N, ${userLongitude.toFixed(4)}°E`;
+                    status.style.color = 'var(--accent-emerald)';
+                    document.getElementById('gps-indicator').style.background = 'var(--accent-emerald)';
+                    document.getElementById('locationSearch').value = 'GPS Location Acquired';
+                    map.setView([userLatitude, userLongitude], 16, { animate: true });
+                }, () => {
+                    status.textContent = 'GPS failed. Search manually.';
+                    status.style.color = 'var(--accent-rose)';
+                }, { enableHighAccuracy: true });
+            }
+        });
+
+        document.getElementById('btn-search-location').addEventListener('click', searchLocation);
+        document.getElementById('locationSearch').addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); searchLocation(); } });
+
+        async function searchLocation() {
+            const query = document.getElementById('locationSearch').value;
+            if (!query) return;
+            const status = document.getElementById('gps-status');
+            status.textContent = 'Searching...';
+            status.style.color = 'var(--accent-cyan)';
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    userLatitude = parseFloat(data[0].lat);
+                    userLongitude = parseFloat(data[0].lon);
+                    status.textContent = `LOCKED: ${userLatitude.toFixed(4)}°N, ${userLongitude.toFixed(4)}°E`;
+                    status.style.color = 'var(--accent-emerald)';
+                    document.getElementById('gps-indicator').style.background = 'var(--accent-emerald)';
+                    map.setView([userLatitude, userLongitude], 16, { animate: true });
+                } else {
+                    status.textContent = 'Location not found.';
+                    status.style.color = 'var(--accent-rose)';
+                }
+            } catch { status.textContent = 'Network error.'; status.style.color = 'var(--accent-rose)'; }
+        }
+
+        // ---- Form Submit ----
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!userLatitude || !userLongitude) { showToast('Location is required.', true); return; }
+
+            const submitText = document.getElementById('submit-text');
+            const submitSpinner = document.getElementById('submit-spinner');
+            submitText.style.display = 'none';
+            submitSpinner.style.display = 'inline';
+            document.getElementById('btn-submit').disabled = true;
+
+            const name = document.getElementById('reporterName').value || 'Anonymous';
+            localStorage.setItem('janSahayakUser', name);
+
+            const formData = new FormData();
+            formData.append('description', document.getElementById('description').value);
+            formData.append('latitude', userLatitude);
+            formData.append('longitude', userLongitude);
+            formData.append('reporter_name', name);
+            const mediaFile = document.getElementById('mediaFile').files[0];
+            if (mediaFile) formData.append('image', mediaFile);
+
+            try {
+                const response = await fetch('/api/report', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(`Report submitted! +${result.points_earned || 10} points`);
+                    document.getElementById('formOverlay').classList.remove('active');
+                    document.getElementById('reportForm').reset();
+                    document.getElementById('file-label').textContent = 'Capture Image or Video';
+                    document.getElementById('file-label').style.color = '';
+                    document.getElementById('media-preview').style.display = 'none';
+                    document.getElementById('gps-status').textContent = 'Awaiting input...';
+                    document.getElementById('gps-status').style.color = '';
+                    document.getElementById('reporterName').value = name;
+                    userLatitude = null;
+                    userLongitude = null;
+                } else {
+                    showToast(result.error || 'Submission failed.', true);
+                }
+            } catch { showToast('Network error.', true); }
+
+            submitText.style.display = 'inline';
+            submitSpinner.style.display = 'none';
+            document.getElementById('btn-submit').disabled = false;
+        });
+
+        // ---- Voting ----
+        async function voteOnReport(reportId, voteType) {
+            const name = localStorage.getItem('janSahayakUser') || 'Anonymous';
+            try {
+                const res = await fetch(`/api/report/${reportId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voter_name: name, vote_type: voteType })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Vote recorded! +3 points`);
+                } else {
+                    showToast(data.error || 'Vote failed.', true);
+                }
+            } catch { showToast('Network error.', true); }
+        }
+
+        // ---- Fetch & Render ----
+        async function fetchReports() {
+            try {
+                const res = await fetch('/api/reports');
+                const reports = await res.json();
+
+                activeMarkers.forEach(m => map.removeLayer(m));
+                activeMarkers = [];
+
+                const list = document.getElementById('issues-list');
+                list.innerHTML = '';
+
+                let activeCount = 0, totalVotes = 0;
+
+                reports.forEach((issue, idx) => {
+                    if (issue.status === 'Resolved' || issue.flagged_spam) return;
+                    activeCount++;
+                    totalVotes += issue.upvotes + issue.downvotes;
+
+                    const catColor = getCategoryColor(issue.category);
+                    const sevColor = getSeverityColor(issue.ai_severity);
+                    const catClass = getCategoryClass(issue.category);
+
+                    // Map marker
+                    const markerSize = 8 + (issue.ai_severity || 3) * 2;
+                    const marker = L.circleMarker([issue.latitude, issue.longitude], {
+                        radius: markerSize, fillColor: catColor, color: catColor,
+                        weight: 1, fillOpacity: 0.7, opacity: 0.9
+                    }).addTo(map);
+                    activeMarkers.push(marker);
+
+                    marker.bindPopup(`
+                        <div style="font-family:var(--font-body);min-width:200px;">
+                            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${catColor};margin-bottom:0.5rem;">${issue.category || 'General'}</div>
+                            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;line-height:1.4;">${issue.ai_summary || issue.description}</p>
+                            <div style="display:flex;gap:0.75rem;font-family:var(--font-mono);font-size:0.7rem;">
+                                <span style="color:var(--accent-emerald);">▲ ${issue.upvotes}</span>
+                                <span style="color:var(--text-dim);">Severity: ${issue.ai_severity}/5</span>
+                            </div>
+                        </div>
+                    `);
+
+                    // Issue card
+                    const card = document.createElement('div');
+                    card.className = `issue-card ${catClass} fade-in-item`;
+                    card.style.animationDelay = `${idx * 0.06}s`;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center" style="margin-bottom:0.5rem;">
+                            <span class="category-badge">${issue.category || 'General'}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="badge-severity" style="background:${sevColor}20;color:${sevColor};font-size:0.6rem;">${issue.ai_severity}</span>
+                                <span class="time-ago">${issue.time_ago}</span>
+                            </div>
+                        </div>
+                        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;line-height:1.5;">${issue.ai_summary || issue.description}</p>
+                        <div class="flex justify-between items-center">
+                            <div class="flex gap-2">
+                                <button class="vote-btn" onclick="event.stopPropagation();voteOnReport(${issue.id},'up')">▲ ${issue.upvotes}</button>
+                                <button class="vote-btn downvote" onclick="event.stopPropagation();voteOnReport(${issue.id},'down')">▼ ${issue.downvotes}</button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">💬 ${issue.comment_count || 0}</span>
+                                <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">by ${issue.reporter_name}</span>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => map.setView([issue.latitude, issue.longitude], 17, { animate: true }));
+                    list.appendChild(card);
+                });
+
+                countUp(document.getElementById('metric-active'), activeCount);
+                countUp(document.getElementById('metric-votes'), totalVotes);
+
+                if (activeCount === 0) {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">No active reports. Be the first to file one.</div></div>';
+                }
+            } catch (err) { console.error('Fetch error:', err); }
+        }
+
+        // ---- Init ----
+        window.addEventListener('DOMContentLoaded', fetchReports);
+    </script>
+</body>
+</html>
