@@ -25,16 +25,22 @@ Modern municipalities suffer from reactive maintenance. Citizens report potholes
 ## ✨ Key Features
 
 * **Artificial Intelligence Triage:**
-  User uploads (including video formats, parsed via OpenCV) are analyzed by a custom Google Gemini pipeline. The system automatically categorizes the issue and assigns a 1-5 severity rating.
+  User uploads (including video formats) are analyzed by a custom Google Gemini pipeline. The system automatically categorizes the issue and assigns a 1-5 severity rating.
   
-* **Proximity Deduplication:**
-  If a citizen reports an issue within 300 meters of an active report, the system intelligently merges them, converting the new report into an "upvote" for the existing one.
+* **Multilingual & Inclusive Design:**
+  Built-in support for multiple languages (e.g., Hindi translations via Gemini) to ensure accessibility for all demographics within the municipality.
+
+* **Proximity Deduplication & Grouping:**
+  If a citizen reports an issue within a 50-meter radius of an active report, the system intelligently merges them, converting the new report into a "+1 Grouped" badge and dynamically adjusting the severity scale.
   
-* **Community Gamification:**
-  A robust reputation system awards points for civic engagement. Citizens earn points by filing reports, verifying others' reports, and contributing to discussions.
-  
-* **Administrative Command Center:**
-  A dedicated, high-contrast portal for city officials to filter issues by severity, track resolution metrics, and flag spam.
+* **Community Gamification & Civic Certificates:**
+  A robust reputation system awards points for civic engagement. Upon reaching milestones (e.g., 50 points), citizens unlock downloadable, dynamically generated **Civic Certificates** recognizing their contributions.
+
+* **Interactive "Before & After" Resolution Sliders:**
+  When an admin resolves an issue, citizens can view a sleek, interactive slider comparing the original hazard with the finalized repair, highlighting the impact of city initiatives.
+
+* **Administrative Command Center & Work Orders:**
+  A dedicated portal for city officials to filter issues, track resolution metrics, and automatically generate **PDF Work Orders** for maintenance crews with a single click.
   
 * **Predictive Impact Analytics:**
   A localized intelligence dashboard that analyzes historical data to generate resource allocation recommendations and predict infrastructure failure hotspots.
