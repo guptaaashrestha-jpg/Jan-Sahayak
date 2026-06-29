@@ -7,3 +7,4 @@ backend/uploads/
 .gemini/
 backend/certificates/
 backend/work_orders/
+backend/assets/
