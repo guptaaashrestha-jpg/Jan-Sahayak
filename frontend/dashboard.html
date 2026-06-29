@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/translations.js"></script>
 </head>
 <body>
 
@@ -24,6 +25,7 @@
 
     <!-- Navigation -->
     <div id="main-nav"></div>
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" class="btn btn-ghost btn-sm" style="position:fixed;top:1.5rem;right:1.5rem;z-index:9999;background:var(--bg-card);border:1px solid var(--border-medium);border-radius:var(--radius-xl);padding:0.5rem 1rem;font-weight:bold;">🌐 HI</button>
 
     <!-- Page Content -->
     <div class="page-wrapper" style="position:relative;z-index:1;">
@@ -35,12 +37,12 @@
                 <div class="sidebar-header">
                     <div class="flex justify-between items-center" style="margin-bottom:1rem;">
                         <div>
-                            <h1 id="page-title" class="text-xl font-bold tracking-wide" style="letter-spacing:0.1em;">JAN SAHAYAK</h1>
-                            <p class="section-subtitle" style="margin-top:2px;">Citizen Reporting Portal</p>
+                            <h1 id="page-title" class="text-xl font-bold tracking-wide" style="letter-spacing:0.1em;" data-i18n="app_title">JAN SAHAYAK</h1>
+                            <p class="section-subtitle" style="margin-top:2px;" data-i18n="app_subtitle">Citizen Reporting Portal</p>
                         </div>
                     </div>
                     <button id="btn-new-report" class="btn btn-outline" style="width:100%;">
-                        <span style="font-size:1.1rem;">+</span> FILE NEW REPORT
+                        <span style="font-size:1.1rem;">+</span> <span data-i18n="btn_new_report">FILE NEW REPORT</span>
                     </button>
                 </div>
 
@@ -48,11 +50,11 @@
                 <div class="sidebar-metrics">
                     <div class="grid-2" style="gap:0.75rem;">
                         <div class="kpi-card" style="--kpi-accent:var(--accent-cyan);">
-                            <div class="kpi-label">Active Issues</div>
+                            <div class="kpi-label" data-i18n="kpi_active">Active Issues</div>
                             <div class="kpi-value" id="metric-active">0</div>
                         </div>
                         <div class="kpi-card" style="--kpi-accent:var(--accent-emerald);">
-                            <div class="kpi-label">Community Votes</div>
+                            <div class="kpi-label" data-i18n="kpi_votes">Community Votes</div>
                             <div class="kpi-value" id="metric-votes" style="color:var(--accent-emerald);">0</div>
                         </div>
                     </div>
@@ -86,8 +88,8 @@
             <form id="reportForm" style="display:flex;flex-direction:column;gap:1rem;">
                 <!-- Reporter Name -->
                 <div>
-                    <label class="form-label">Your Name</label>
-                    <input type="text" id="reporterName" class="form-input" placeholder="Enter your name for leaderboard" value="">
+                    <label class="form-label" data-i18n="label_name">Your Name</label>
+                    <input type="text" id="reporterName" class="form-input" placeholder="Enter your name for leaderboard" value="" data-i18n="placeholder_name">
                 </div>
 
                 <!-- Location -->
@@ -95,34 +97,34 @@
                     <div class="flex justify-between items-center" style="margin-bottom:0.75rem;">
                         <div class="flex items-center gap-2">
                             <span id="gps-indicator" style="width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);display:inline-block;animation:pulse-ring 1.5s infinite;"></span>
-                            <span class="form-label" style="margin:0;">Location</span>
+                            <span class="form-label" style="margin:0;" data-i18n="label_location">Location</span>
                         </div>
-                        <button type="button" id="btn-use-gps" class="btn btn-ghost btn-sm" style="font-size:0.6rem;padding:0.25rem 0.5rem;">USE GPS</button>
+                        <button type="button" id="btn-use-gps" class="btn btn-ghost btn-sm" style="font-size:0.6rem;padding:0.25rem 0.5rem;" data-i18n="btn_gps">USE GPS</button>
                     </div>
                     <div style="position:relative;">
-                        <input type="text" id="locationSearch" class="form-input" placeholder="Search location (e.g. Vikas Nagar)" style="padding-right:2.5rem;">
+                        <input type="text" id="locationSearch" class="form-input" placeholder="Search location (e.g. Vikas Nagar)" style="padding-right:2.5rem;" data-i18n="placeholder_search">
                         <button type="button" id="btn-search-location" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:1rem;cursor:pointer;">🔍</button>
                     </div>
-                    <div id="gps-status" class="font-mono" style="font-size:0.65rem;color:var(--text-dim);text-align:right;margin-top:0.375rem;">Awaiting input...</div>
+                    <div id="gps-status" class="font-mono" style="font-size:0.65rem;color:var(--text-dim);text-align:right;margin-top:0.375rem;" data-i18n="status_awaiting">Awaiting input...</div>
                 </div>
 
                 <!-- Media Upload -->
                 <div class="upload-zone" id="uploadZone">
                     <input type="file" id="mediaFile" accept="image/*,video/*" required>
                     <div style="font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;">📷</div>
-                    <span id="file-label" class="font-mono" style="font-size:0.75rem;color:var(--text-dim);">Capture Image or Video</span>
+                    <span id="file-label" class="font-mono" style="font-size:0.75rem;color:var(--text-dim);" data-i18n="capture_media">Capture Image or Video</span>
                     <div id="media-preview" style="margin-top:0.75rem;display:none;"></div>
                 </div>
 
                 <!-- Description -->
                 <div>
-                    <label class="form-label">Description</label>
-                    <textarea id="description" class="form-input form-textarea" placeholder="Describe the issue clearly..." required></textarea>
+                    <label class="form-label" data-i18n="label_desc">Description</label>
+                    <textarea id="description" class="form-input form-textarea" placeholder="Describe the issue clearly..." required data-i18n="placeholder_desc"></textarea>
                 </div>
 
                 <!-- Submit -->
                 <button type="submit" id="btn-submit" class="btn btn-primary" style="width:100%;padding:0.875rem;">
-                    <span id="submit-text">SUBMIT REPORT</span>
+                    <span id="submit-text" data-i18n="btn_submit">SUBMIT REPORT</span>
                     <span id="submit-spinner" style="display:none;">⟳ ANALYZING...</span>
                 </button>
             </form>
@@ -178,6 +180,12 @@
         // ---- Socket.IO ----
         const socket = io(window.location.origin);
         socket.on('database_updated', () => fetchReports());
+        
+        socket.on('issue_resolved', (data) => {
+            // Play a subtle sound (optional, we'll just show the toast for now)
+            const catName = data.category ? data.category.split(' ')[0] : 'Civic';
+            showToast(`✅ RESOLVED: A ${catName} issue reported by ${data.reporter_name} was just fixed by the city!`, false);
+        });
 
         // ---- Map ----
         const map = L.map('map', { zoomControl: false }).setView([26.8968, 80.9581], 13);
@@ -376,6 +384,18 @@
             } catch { showToast('Network error.', true); }
         }
 
+        let currentTab = 'active';
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-active').style.borderColor = tab === 'active' ? 'var(--accent-emerald)' : 'var(--border-subtle)';
+            document.getElementById('tab-active').style.color = tab === 'active' ? 'var(--text-primary)' : 'var(--text-secondary)';
+            
+            document.getElementById('tab-resolved').style.borderColor = tab === 'resolved' ? 'var(--accent-emerald)' : 'var(--border-subtle)';
+            document.getElementById('tab-resolved').style.color = tab === 'resolved' ? 'var(--text-primary)' : 'var(--text-secondary)';
+            
+            fetchReports();
+        }
+
         // ---- Fetch & Render ----
         async function fetchReports() {
             try {
@@ -391,13 +411,28 @@
                 let activeCount = 0, totalVotes = 0;
 
                 reports.forEach((issue, idx) => {
-                    if (issue.status === 'Resolved' || issue.flagged_spam) return;
-                    activeCount++;
+                    if (issue.flagged_spam) return;
+                    if (currentTab === 'active' && issue.status === 'Resolved') return;
+                    if (currentTab === 'resolved' && issue.status === 'Pending') return;
+                    
+                    if (issue.status === 'Pending') {
+                        activeCount++;
+                    }
                     totalVotes += issue.upvotes + issue.downvotes;
 
                     const catColor = getCategoryColor(issue.category);
                     const sevColor = getSeverityColor(issue.ai_severity);
                     const catClass = getCategoryClass(issue.category);
+                    
+                    const t = window.translations ? window.translations[currentLang] : null;
+                    const byText = t ? t['by'] : 'by';
+                    let catText = issue.category || 'General';
+                    if (t) {
+                        if (catText.includes('Pothole')) catText = t['cat_pothole'];
+                        else if (catText.includes('Garbage')) catText = t['cat_garbage'];
+                        else if (catText.includes('Streetlight')) catText = t['cat_streetlight'];
+                        else catText = t['cat_general'];
+                    }
 
                     // Map marker
                     const markerSize = 8 + (issue.ai_severity || 3) * 2;
@@ -407,10 +442,14 @@
                     }).addTo(map);
                     activeMarkers.push(marker);
 
+                    const popupSummary = currentLang === 'hi' && issue.ai_summary_hi 
+                        ? issue.ai_summary_hi 
+                        : (issue.ai_summary || issue.description);
+
                     marker.bindPopup(`
                         <div style="font-family:var(--font-body);min-width:200px;">
-                            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${catColor};margin-bottom:0.5rem;">${issue.category || 'General'}</div>
-                            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;line-height:1.4;">${issue.ai_summary || issue.description}</p>
+                            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:${catColor};margin-bottom:0.5rem;">${catText}</div>
+                            <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.5rem;line-height:1.4;">${popupSummary}</p>
                             <div style="display:flex;gap:0.75rem;font-family:var(--font-mono);font-size:0.7rem;">
                                 <span style="color:var(--accent-emerald);">▲ ${issue.upvotes}</span>
                                 <span style="color:var(--text-dim);">Severity: ${issue.ai_severity}/5</span>
@@ -422,15 +461,34 @@
                     const card = document.createElement('div');
                     card.className = `issue-card ${catClass} fade-in-item`;
                     card.style.animationDelay = `${idx * 0.06}s`;
+                    
+                    const issueSummary = currentLang === 'hi' && issue.ai_summary_hi 
+                        ? issue.ai_summary_hi 
+                        : (issue.ai_summary || issue.description);
+
                     card.innerHTML = `
                         <div class="flex justify-between items-center" style="margin-bottom:0.5rem;">
-                            <span class="category-badge">${issue.category || 'General'}</span>
+                            <span class="category-badge">${catText}</span>
                             <div class="flex items-center gap-2">
                                 <span class="badge-severity" style="background:${sevColor}20;color:${sevColor};font-size:0.6rem;">${issue.ai_severity}</span>
                                 <span class="time-ago">${issue.time_ago}</span>
                             </div>
                         </div>
-                        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;line-height:1.5;">${issue.ai_summary || issue.description}</p>
+                        <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;line-height:1.5;">${issueSummary}</p>
+                        
+                        ${issue.status === 'Resolved' && issue.image_filename && issue.resolved_image_filename ? `
+                        <div class="slider-container" style="position:relative; width:100%; height:160px; overflow:hidden; border-radius:var(--radius-sm); margin-bottom:1rem; border:1px solid var(--border-subtle);">
+                            <img src="/uploads/${issue.image_filename}" style="position:absolute; width:100%; height:100%; object-fit:cover;">
+                            <img src="/uploads/${issue.resolved_image_filename}" id="after-img-${issue.id}" style="position:absolute; width:100%; height:100%; object-fit:cover; clip-path: inset(0 0 0 50%);">
+                            <input type="range" min="0" max="100" value="50" style="position:absolute; width:100%; height:100%; opacity:0; cursor:ew-resize;" oninput="document.getElementById('after-img-${issue.id}').style.clipPath = 'inset(0 0 0 ' + this.value + '%)'; document.getElementById('slider-line-${issue.id}').style.left = this.value + '%';">
+                            <div id="slider-line-${issue.id}" style="position:absolute; left:50%; top:0; bottom:0; width:3px; background:#10b981; pointer-events:none; box-shadow:0 0 8px rgba(0,0,0,0.8);">
+                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:24px; height:24px; background:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#000; font-size:10px; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.5);">◀▶</div>
+                            </div>
+                            <div style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.7); color:#fff; padding:3px 8px; font-size:0.6rem; border-radius:4px; font-family:var(--font-mono); font-weight:bold; border:1px solid var(--border-subtle);">BEFORE</div>
+                            <div style="position:absolute; top:8px; right:8px; background:var(--accent-emerald); color:#000; padding:3px 8px; font-size:0.6rem; border-radius:4px; font-family:var(--font-mono); font-weight:bold;">AFTER</div>
+                        </div>
+                        ` : ''}
+
                         <div class="flex justify-between items-center">
                             <div class="flex gap-2">
                                 <button class="vote-btn" onclick="event.stopPropagation();voteOnReport(${issue.id},'up')">▲ ${issue.upvotes}</button>
@@ -438,7 +496,7 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">💬 ${issue.comment_count || 0}</span>
-                                <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">by ${issue.reporter_name}</span>
+                                <span class="font-mono" style="font-size:0.6rem;color:var(--text-dim);">${byText} ${issue.reporter_name}</span>
                             </div>
                         </div>
                     `;
@@ -449,14 +507,17 @@
                 countUp(document.getElementById('metric-active'), activeCount);
                 countUp(document.getElementById('metric-votes'), totalVotes);
 
-                if (activeCount === 0) {
+                if (currentTab === 'active' && activeCount === 0) {
                     list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">No active reports. Be the first to file one.</div></div>';
+                } else if (currentTab === 'resolved' && list.innerHTML === '') {
+                    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✨</div><div class="empty-state-text">No resolved reports yet.</div></div>';
                 }
             } catch (err) { console.error('Fetch error:', err); }
         }
 
         // ---- Init ----
         window.addEventListener('DOMContentLoaded', fetchReports);
+        window.addEventListener('languageChanged', fetchReports);
     </script>
 </body>
 </html>

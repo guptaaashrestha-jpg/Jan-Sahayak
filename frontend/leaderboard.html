@@ -129,6 +129,7 @@
                                 <th style="text-align:right;">Points</th>
                                 <th style="text-align:right;">Reports</th>
                                 <th style="text-align:right;">Verifications</th>
+                                <th style="text-align:right;">Reward</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body">
@@ -172,6 +173,7 @@
                                     <div class="text-xs" style="color:var(--text-dim);">Comments</div>
                                 </div>
                             </div>
+                            <a id="profile-cert-btn" href="#" target="_blank" class="btn btn-primary" style="display:none;margin-top:1.5rem;width:100%;">🏆 Download Civic Certificate</a>
                         </div>
                     </div>
                     <div id="profile-error" style="margin-top:0.5rem;display:none;" class="font-mono text-xs" style="color:var(--accent-rose);"></div>
@@ -237,6 +239,9 @@
                         <td class="font-mono font-bold" style="text-align:right;color:var(--accent-emerald);">${c.points}</td>
                         <td class="font-mono" style="text-align:right;">${c.reports_filed}</td>
                         <td class="font-mono" style="text-align:right;">${c.verifications_made}</td>
+                        <td style="text-align:right;">
+                            ${c.points >= 50 ? `<a href="/api/certificate/${encodeURIComponent(c.name)}" target="_blank" class="btn btn-outline btn-sm" style="font-size:0.65rem;padding:0.25rem 0.5rem;color:var(--accent-amber);border-color:var(--accent-amber);">🏆 Certificate</a>` : ''}
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -261,6 +266,15 @@
                     document.getElementById('profile-reports').textContent = data.reports_filed;
                     document.getElementById('profile-verifications').textContent = data.verifications_made;
                     document.getElementById('profile-comments').textContent = data.comments_made;
+                    
+                    const certBtn = document.getElementById('profile-cert-btn');
+                    if (data.points >= 50) {
+                        certBtn.style.display = 'inline-block';
+                        certBtn.href = `/api/certificate/${encodeURIComponent(data.name)}`;
+                    } else {
+                        certBtn.style.display = 'none';
+                    }
+                    
                     document.getElementById('profile-result').style.display = 'block';
                     document.getElementById('profile-error').style.display = 'none';
                 } else {

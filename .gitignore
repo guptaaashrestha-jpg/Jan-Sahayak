@@ -5,3 +5,5 @@ __pycache__/
 backend/instance/
 backend/uploads/
 .gemini/
+backend/certificates/
+backend/work_orders/

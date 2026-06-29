@@ -211,6 +211,7 @@
                             <span class="category-badge">${issue.category || 'General'}</span>
                             <div class="flex items-center gap-2">
                                 ${statusBadge}
+                                ${issue.duplicate_count > 0 ? `<span class="badge" style="background:var(--accent-indigo-glow);color:var(--accent-indigo);border:1px solid rgba(99,102,241,0.2);">+${issue.duplicate_count} Grouped</span>` : ''}
                                 <span class="badge-severity" style="background:${sevColor}20;color:${sevColor};font-size:0.6rem;">${issue.ai_severity}</span>
                             </div>
                         </div>
@@ -227,6 +228,9 @@
                                 <button class="btn btn-outline btn-sm" onclick="adminAction('/api/report/${issue.id}/resolve')">✓ Resolve</button>
                                 <button class="btn btn-danger btn-sm" onclick="adminAction('/api/report/${issue.id}/spam')">🚫 Spam</button>
                             ` : ''}
+                            ${issue.work_order_filename ? `
+                                <a href="/work_orders/${issue.work_order_filename}" target="_blank" class="btn btn-primary btn-sm">📄 Download WO</a>
+                            ` : ''}
                             <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="adminAction('/api/report/${issue.id}/remove','DELETE')">🗑 Delete</button>
                         </div>
                     `;
@@ -240,6 +244,80 @@
         }
 
         window.addEventListener('DOMContentLoaded', fetchAdmin);
+    </script>
+    <div id="chat-widget" style="position:fixed;bottom:20px;right:20px;z-index:9999;">
+        <div id="chat-window" style="display:none;width:350px;height:450px;background:var(--bg-glass);backdrop-filter:blur(10px);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden;margin-bottom:15px;">
+            <div style="background:var(--accent-emerald);color:#fff;padding:15px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;">
+                <span>Civic Assistant AI</span>
+                <button onclick="toggleChat()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.2rem;">&times;</button>
+            </div>
+            <div id="chat-messages" style="flex:1;padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:0.85rem;color:var(--text-primary);">
+                <div style="background:var(--bg-lighter);padding:10px;border-radius:10px;align-self:flex-start;max-width:80%;">Hello! I am your AI Civic Assistant. You can ask me questions about the current civic data, such as "What are the most critical pending issues?"</div>
+            </div>
+            <div style="padding:10px;border-top:1px solid var(--border-subtle);display:flex;gap:10px;background:var(--bg-dark);">
+                <input type="text" id="chat-input" placeholder="Ask a question..." style="flex:1;background:var(--bg-lighter);border:1px solid var(--border-subtle);color:var(--text-primary);padding:8px;border-radius:5px;font-family:inherit;font-size:0.85rem;outline:none;" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                <button onclick="sendChatMessage()" class="btn" style="background:var(--accent-emerald);color:#fff;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:0.85rem;">Send</button>
+            </div>
+        </div>
+        <button id="chat-toggle-btn" onclick="toggleChat()" style="width:60px;height:60px;border-radius:50%;background:var(--accent-emerald);color:#fff;border:none;box-shadow:0 4px 15px rgba(0,0,0,0.3);cursor:pointer;display:flex;justify-content:center;align-items:center;font-size:1.5rem;float:right;transition:transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            💬
+        </button>
+    </div>
+
+    <script>
+        function toggleChat() {
+            const w = document.getElementById('chat-window');
+            w.style.display = w.style.display === 'none' ? 'flex' : 'none';
+            if (w.style.display === 'flex') document.getElementById('chat-input').focus();
+        }
+        
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            const msgsDiv = document.getElementById('chat-messages');
+            
+            const uDiv = document.createElement('div');
+            uDiv.style.cssText = 'background:var(--accent-emerald);color:#fff;padding:10px;border-radius:10px;align-self:flex-end;max-width:80%;word-wrap:break-word;';
+            uDiv.innerText = msg;
+            msgsDiv.appendChild(uDiv);
+            
+            input.value = '';
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            
+            const tDiv = document.createElement('div');
+            tDiv.style.cssText = 'background:var(--bg-lighter);padding:10px;border-radius:10px;align-self:flex-start;max-width:80%;font-style:italic;color:var(--text-dim);';
+            tDiv.innerText = 'Thinking...';
+            msgsDiv.appendChild(tDiv);
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                
+                msgsDiv.removeChild(tDiv);
+                
+                const rDiv = document.createElement('div');
+                rDiv.style.cssText = 'background:var(--bg-lighter);padding:10px;border-radius:10px;align-self:flex-start;max-width:80%;word-wrap:break-word;';
+                let html = (data.reply || 'Sorry, an error occurred.')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--accent-emerald)">$1</strong>')
+                    .replace(/\n/g, '<br>');
+                rDiv.innerHTML = html;
+                msgsDiv.appendChild(rDiv);
+            } catch(e) {
+                msgsDiv.removeChild(tDiv);
+                const eDiv = document.createElement('div');
+                eDiv.style.cssText = 'background:var(--accent-rose);color:#fff;padding:10px;border-radius:10px;align-self:flex-start;max-width:80%;';
+                eDiv.innerText = 'Connection error.';
+                msgsDiv.appendChild(eDiv);
+            }
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+        }
     </script>
 </body>
 </html>

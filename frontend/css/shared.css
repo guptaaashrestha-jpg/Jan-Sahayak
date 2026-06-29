@@ -3,7 +3,7 @@
    Premium dark theme for civic reporting
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Glegoo:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Glegoo:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 /* ---- CSS Custom Properties ---- */
 :root {
@@ -461,11 +461,17 @@ img { max-width: 100%; display: block; }
   gap: 0.75rem;
   z-index: 9999;
   transform: translateX(120%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s, visibility 0.3s;
   box-shadow: var(--shadow-lg);
 }
 
-.toast.show { transform: translateX(0); }
+.toast.show { 
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+}
 .toast.error { border-color: var(--accent-rose); }
 
 .toast-icon {

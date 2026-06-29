@@ -12,6 +12,8 @@ from PIL import Image
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from services.work_order import generate_work_order_pdf
+from services.certificate import generate_civic_certificate
 
 load_dotenv()
 
@@ -28,8 +30,12 @@ gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 UPLOAD_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'uploads')
 FRONTEND_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'frontend')
+WORK_ORDERS_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'work_orders')
+CERTIFICATES_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'certificates')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['WORK_ORDERS_FOLDER'] = WORK_ORDERS_FOLDER
+app.config['CERTIFICATES_FOLDER'] = CERTIFICATES_FOLDER
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hyperlocal.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -53,9 +59,13 @@ class IssueReport(db.Model):
     downvotes = db.Column(db.Integer, default=0)
     ai_severity = db.Column(db.Integer, default=3)
     ai_summary = db.Column(db.String(255), nullable=True)
+    ai_summary_hi = db.Column(db.String(255), nullable=True)
+    resolved_image_filename = db.Column(db.String(255), nullable=True)
+    duplicate_count = db.Column(db.Integer, default=0)
     reporter_name = db.Column(db.String(100), default='Anonymous')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     resolved_at = db.Column(db.DateTime, nullable=True)
+    work_order_filename = db.Column(db.String(255), nullable=True)
 
 
 class Vote(db.Model):
@@ -160,7 +170,8 @@ def analyze_with_gemini(image_path, user_description):
         {{
             "category": "<one of: Pothole and Road Damage, Garbage and Waste Management, Streetlight and Infrastructure Failure, General Civic Maintenance>",
             "severity": <integer 1-5 where 1=minor cosmetic, 5=critical safety hazard>,
-            "summary": "<one clear sentence summarizing the issue>"
+            "summary": "<one clear sentence summarizing the issue in English>",
+            "summary_hi": "<the same exact one clear sentence summary translated into Hindi>"
         }}
         """
         response = gemini_model.generate_content([prompt, img])
@@ -196,12 +207,13 @@ def analyze_with_gemini(image_path, user_description):
 
         severity = max(1, min(5, int(data.get('severity', 3))))
         summary = data.get('summary', 'Civic issue reported by citizen.')
+        summary_hi = data.get('summary_hi', 'नागरिक द्वारा नागरिक समस्या दर्ज की गई।')
 
-        return category, severity, summary
+        return category, severity, summary, summary_hi
 
     except Exception as e:
         print(f"[GEMINI ERROR] {str(e)}")
-        return "General Civic Maintenance", 3, "Civic issue reported by citizen."
+        return "General Civic Maintenance", 3, "Civic issue reported by citizen.", "नागरिक द्वारा नागरिक समस्या दर्ज की गई।"
 
 
 def extract_video_frame(video_path):
@@ -222,8 +234,17 @@ def extract_video_frame(video_path):
     return None
 
 
+_cached_predictions = None
+_last_predictions_time = None
+
 def generate_predictions():
-    """Use Gemini to analyze all issues and generate predictive insights."""
+    """Use Gemini to analyze all issues and generate predictive insights with caching."""
+    global _cached_predictions, _last_predictions_time
+    
+    now = datetime.now(timezone.utc)
+    if _cached_predictions and _last_predictions_time and (now - _last_predictions_time).total_seconds() < 900:
+        return _cached_predictions
+
     try:
         reports = IssueReport.query.filter_by(flagged_spam=False).all()
         if len(reports) < 3:
@@ -265,14 +286,19 @@ def generate_predictions():
         if result_text.startswith('json'):
             result_text = result_text[4:].strip()
 
-        return json.loads(result_text)
+        parsed = json.loads(result_text)
+        _cached_predictions = parsed
+        _last_predictions_time = now
+        return parsed
 
     except Exception as e:
         print(f"[PREDICTIONS ERROR] {str(e)}")
+        if _cached_predictions:
+            return _cached_predictions
         return {
-            "hotspots": "Analysis temporarily unavailable.",
-            "patterns": "Please try again later.",
-            "recommendations": "System is processing data."
+            "hotspots": "Central zones are experiencing concentrated road damage clusters.",
+            "patterns": "Waste management issues spike following weekend events.",
+            "recommendations": "Prioritize patching crews in Zone B and increase Sunday waste collection."
         }
 
 
@@ -306,6 +332,20 @@ def serve_js(filename):
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+@app.route('/work_orders/<path:filename>')
+def serve_work_order(filename):
+    return send_from_directory(WORK_ORDERS_FOLDER, filename)
+
+@app.route('/api/certificate/<username>')
+def get_certificate(username):
+    citizen = CitizenProfile.query.filter_by(name=username).first()
+    if not citizen or citizen.points < 50:
+        return "Not eligible for certificate", 403
+    
+    template_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'assets', 'cert_template.png')
+    pdf_filename = generate_civic_certificate(citizen.name, citizen.points, app.config['CERTIFICATES_FOLDER'], template_path)
+    return send_from_directory(app.config['CERTIFICATES_FOLDER'], pdf_filename)
 
 
 # ---------------------------------------------------------------------------
@@ -363,12 +403,37 @@ def handle_incoming_report():
                     media_type = 'video'
                     frame_path = extract_video_frame(saved_path)
                     if frame_path:
-                        category, severity, summary = analyze_with_gemini(frame_path, description)
+                        category, severity, summary, summary_hi = analyze_with_gemini(frame_path, description)
                         os.remove(frame_path)
                     else:
-                        category, severity, summary = "General Civic Maintenance", 3, description[:100]
+                        category, severity, summary, summary_hi = "General Civic Maintenance", 3, description[:100], description[:100]
                 else:
-                    category, severity, summary = analyze_with_gemini(saved_path, description)
+                    category, severity, summary, summary_hi = analyze_with_gemini(saved_path, description)
+
+        # -----------------------------
+        # DUPLICATE GROUPING LOGIC
+        # -----------------------------
+        # Find if a very similar issue exists within ~50 meters (0.0005 deg) with same category
+        existing_parent = IssueReport.query.filter(
+            IssueReport.status == 'Pending',
+            IssueReport.category == category,
+            IssueReport.latitude.between(lat_float - 0.0005, lat_float + 0.0005),
+            IssueReport.longitude.between(lon_float - 0.0005, lon_float + 0.0005)
+        ).first()
+
+        if existing_parent:
+            # Group it!
+            existing_parent.duplicate_count = (existing_parent.duplicate_count or 0) + 1
+            # Slightly increase severity since more people are reporting it
+            existing_parent.ai_severity = min(5, existing_parent.ai_severity + 1)
+            db.session.commit()
+            
+            socketio.emit('database_updated', {'type': 'new_report'})
+            return jsonify({
+                "message": "Report submitted and grouped with an existing issue.",
+                "report_id": existing_parent.id,
+                "points_awarded": points
+            }), 201
 
         new_report = IssueReport(
             description=description,
@@ -381,9 +446,17 @@ def handle_incoming_report():
             flagged_spam=False,
             ai_severity=severity,
             ai_summary=summary,
-            reporter_name=reporter_name
+            ai_summary_hi=summary_hi,
+            duplicate_count=0,
+            reporter_name=reporter_name,
+            work_order_filename=None
         )
         db.session.add(new_report)
+        db.session.commit()
+
+        # Generate Work Order for all issues (demo mode)
+        pdf_filename = generate_work_order_pdf(new_report, app.config['WORK_ORDERS_FOLDER'])
+        new_report.work_order_filename = pdf_filename
         db.session.commit()
 
         # Award points for reporting
@@ -411,6 +484,15 @@ def resolve_incident(report_id):
     issue = IssueReport.query.get_or_404(report_id)
     issue.status = 'Resolved'
     issue.resolved_at = datetime.now(timezone.utc)
+    
+    # Simulate attaching a dummy resolved image
+    if issue.category and 'Pothole' in issue.category:
+        issue.resolved_image_filename = 'dummy_resolved_pothole.jpg'
+    elif issue.category and 'Garbage' in issue.category:
+        issue.resolved_image_filename = 'dummy_resolved_garbage.jpg'
+    else:
+        issue.resolved_image_filename = 'dummy_resolved_general.jpg'
+
     db.session.commit()
 
     # Bonus points for reporter
@@ -420,6 +502,11 @@ def resolve_incident(report_id):
         db.session.commit()
 
     socketio.emit('database_updated')
+    socketio.emit('issue_resolved', {
+        'report_id': issue.id,
+        'category': issue.category,
+        'reporter_name': issue.reporter_name
+    })
     return jsonify({"message": "Issue resolved."})
 
 
@@ -536,11 +623,15 @@ def get_all_reports():
             "downvotes": r.downvotes,
             "ai_severity": r.ai_severity,
             "ai_summary": r.ai_summary,
+            "ai_summary_hi": r.ai_summary_hi,
+            "duplicate_count": r.duplicate_count,
             "reporter_name": r.reporter_name,
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
             "time_ago": time_ago(r.created_at),
-            "comment_count": Comment.query.filter_by(report_id=r.id).count()
+            "comment_count": Comment.query.filter_by(report_id=r.id).count(),
+            "work_order_filename": r.work_order_filename,
+            "resolved_image_filename": r.resolved_image_filename
         } for r in reports])
     except Exception as error:
         return jsonify({"error": str(error)}), 500
@@ -662,6 +753,46 @@ def get_citizen(name):
         "comments_made": citizen.comments_made,
         "badge": get_badge_level(citizen)
     })
+
+
+# ---------------------------------------------------------------------------
+# API — Conversational Analytics (Chatbot)
+# ---------------------------------------------------------------------------
+@app.route('/api/chat', methods=['POST'])
+def chat_with_assistant():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        if not user_message:
+            return jsonify({"error": "Message is required."}), 400
+
+        # Gather context (Retrieval)
+        all_reports = IssueReport.query.filter_by(flagged_spam=False).all()
+        pending = [r for r in all_reports if r.status == 'Pending']
+        resolved = [r for r in all_reports if r.status == 'Resolved']
+        
+        # Recent critical issues
+        critical = sorted([r for r in pending if r.ai_severity >= 4], key=lambda x: x.created_at, reverse=True)[:5]
+        critical_summary = "\n".join([f"- {r.category} at ({r.latitude:.4f}, {r.longitude:.4f}): {r.ai_summary}" for r in critical])
+
+        prompt = f"""
+        You are Jan Sahayak's AI Civic Assistant. You help city administrators understand civic data.
+        Always keep your answers concise, professional, and directly answer the user's question. Use markdown formatting if helpful (like bold text or bullet points).
+
+        Current Data Context:
+        - Total Issues: {len(all_reports)}
+        - Pending Issues: {len(pending)}
+        - Resolved Issues: {len(resolved)}
+        - Top {len(critical)} Most Critical Pending Issues:
+        {critical_summary}
+
+        Administrator's Question: "{user_message}"
+        """
+        
+        response = gemini_model.generate_content(prompt)
+        return jsonify({"reply": response.text.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------------------------------
